@@ -473,10 +473,12 @@ void app_sensors_read_and_stream(void)
 				 "true", cached_data.vehicle_speed);
 		}
 
-		err = golioth_stream_set_sync(client, "tracker", GOLIOTH_CONTENT_TYPE_JSON,
-					      json_buf, strlen(json_buf), GOLIOTH_STREAM_TIMEOUT_S);
-		if (err)
-			LOG_ERR("Failed to send sensor data to Golioth: %d", err);
+		if (golioth_client_is_connected(client)) {
+			err = golioth_stream_set_sync(client, "tracker", GOLIOTH_CONTENT_TYPE_JSON,
+					json_buf, strlen(json_buf), GOLIOTH_STREAM_TIMEOUT_S);
+			if (err)
+				LOG_ERR("Failed to send sensor data to Golioth: %d", err);
+		}
 	}
 }
 
