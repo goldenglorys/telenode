@@ -36,7 +36,6 @@ images](https://github.com/golioth/reference-design-can-asset-tracker/releases).
 
 ## Golioth Features
 
-
 This app implements:
 
   - [Device Settings
@@ -54,8 +53,8 @@ This app implements:
 
 ### Settings Service
 
-The following settings should be set in the Device Settings menu of the
-[Golioth Console](https://console.golioth.io).
+The following settings should be set in [the Device Settings menu of the
+Golioth Console](https://console.golioth.io/device-settings).
 
   - `LOOP_DELAY_S`
     Adjusts the delay between sensor readings. Set to an integer value
@@ -95,8 +94,8 @@ The following settings should be set in the Device Settings menu of the
 
 ### Remote Procedure Call (RPC) Service
 
-The following RPCs can be initiated in the Remote Procedure Call menu of
-the [Golioth Console](https://console.golioth.io).
+The following RPCs can be initiated in the Remote Procedure Call tab of
+each device in the [Golioth Console](https://console.golioth.io).
 
   - `get_network_info`
     Query and return network information.
@@ -249,17 +248,17 @@ this pipeline entry.
 
 ``` shell
 cd ~
-mkdir golioth-reference-design-coldchain
-python -m venv golioth-reference-design-coldchain/.venv
-source golioth-reference-design-coldchain/.venv/bin/activate
+mkdir reference-design-can-asset-tracker
+python -m venv reference-design-can-asset-tracker/.venv
+source reference-design-can-asset-tracker/.venv/bin/activate
 pip install wheel west ecdsa
 ```
 
 ### Use `west` to initialize and install
 
 ``` shell
-cd ~/golioth-reference-design-coldchain
-west init -m https://github.com/golioth/reference-design-coldchain.git .
+cd ~/reference-design-can-asset-tracker
+west init -m https://github.com/golioth/reference-design-can-asset-tracker.git .
 west update
 west zephyr-export
 pip install -r deps/zephyr/scripts/requirements.txt

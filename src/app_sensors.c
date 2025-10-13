@@ -27,7 +27,7 @@ LOG_MODULE_REGISTER(app_sensors, LOG_LEVEL_DBG);
 static const struct device *o_dev = DEVICE_DT_GET_ANY(golioth_ostentus);
 #endif
 #ifdef CONFIG_ALUDEL_BATTERY_MONITOR
-#include "battery_monitor/battery.h"
+#include <battery_monitor.h>
 #endif
 
 #define NMEA_SIZE		       128
@@ -443,9 +443,9 @@ void app_sensors_read_and_stream(void)
 					   get_batt_v_str(),
 					   strlen(get_batt_v_str()));
 			ostentus_slide_set(o_dev,
-					   BATTERY_LVL,
-					   get_batt_lvl_str(),
-					   strlen(get_batt_lvl_str()));
+					   BATTERY_PCT,
+					   get_batt_pct_str(),
+					   strlen(get_batt_pct_str()));
 		));
 	));
 
@@ -473,10 +473,12 @@ void app_sensors_read_and_stream(void)
 				 "true", cached_data.vehicle_speed);
 		}
 
-		err = golioth_stream_set_sync(client, "tracker", GOLIOTH_CONTENT_TYPE_JSON,
-					      json_buf, strlen(json_buf), GOLIOTH_STREAM_TIMEOUT_S);
-		if (err)
-			LOG_ERR("Failed to send sensor data to Golioth: %d", err);
+		if (golioth_client_is_connected(client)) {
+			err = golioth_stream_set_sync(client, "tracker", GOLIOTH_CONTENT_TYPE_JSON,
+					json_buf, strlen(json_buf), GOLIOTH_STREAM_TIMEOUT_S);
+			if (err)
+				LOG_ERR("Failed to send sensor data to Golioth: %d", err);
+		}
 	}
 }
 
