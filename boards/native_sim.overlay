@@ -1,0 +1,51 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * native_sim board overlay for host-side CAN/OBD/MQTT/buffering testing
+ * (Phase 3.5) — see TESTING.md for scope and the vcan0 setup this pairs
+ * with. Mirrors deps/zephyr/tests/drivers/can/host/boards/native_sim.overlay
+ * for the CAN node; gnss7-sel/sw1 reuse the same "borrow the gpio-leds
+ * binding for a plain GPIO alias" trick the real hardware overlay
+ * (nrf9160dk_nrf9160_ns.overlay) already uses for gnss7-sel, backed here by
+ * native_sim's built-in emulated &gpio0 controller instead of a real pin.
+ * click-uart is aliased to native_sim's second native-pty-uart (uart1,
+ * disabled by default) rather than stubbed out, so NMEA parsing can still
+ * be exercised by feeding sentences into its host-side PTY peer.
+ */
+
+/ {
+	chosen {
+		zephyr,canbus = &can0;
+	};
+
+	aliases {
+		click-uart = &uart1;
+		gnss7-sel = &gnss7_sel;
+		sw1 = &sw1_stub;
+	};
+
+	native_sim_gpio_stubs {
+		compatible = "gpio-leds";
+		gnss7_sel: gnss7_sel {
+			gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+		};
+		sw1_stub: sw1_stub {
+			gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&can_loopback0 {
+	status = "disabled";
+};
+
+&can0 {
+	status = "okay";
+};
+
+&uart1 {
+	status = "okay";
+	current-speed = <38400>;
+};

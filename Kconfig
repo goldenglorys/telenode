@@ -13,4 +13,72 @@ config DNS_SERVER1
 
 endif # DNS_RESOLVER
 
+menu "Uplink MQTT"
+
+config UPLINK_MQTT_BROKER_HOSTNAME
+	string "MQTT broker hostname or IP address"
+	default ""
+	help
+	  Self-hosted MQTT broker to connect to. Left empty by default since
+	  this is deployment-specific; must be set in a board/deployment conf
+	  overlay before this module can connect.
+
+config UPLINK_MQTT_BROKER_PORT
+	int "MQTT broker TLS port"
+	default 8883
+	help
+	  Standard MQTT-over-TLS port. Change if your broker listens
+	  elsewhere.
+
+config UPLINK_MQTT_SEC_TAG
+	int "Modem key-mgmt security tag for broker TLS credentials"
+	default 1234567
+	help
+	  nRF9160 modem-side credential storage slot (see modem_key_mgmt.h)
+	  used for the CA cert / client cert / private key trio provisioned
+	  by uplink_mqtt_init(). Pick a project-specific value if this device
+	  already uses other sec_tags for unrelated purposes (they share one
+	  flat, modem-global numeric namespace).
+
+config UPLINK_MQTT_DEVICE_ID
+	string "Device ID used in MQTT topics and as the MQTT client ID"
+	default ""
+	help
+	  Used to build the trackers/{device_id}/{telemetry,events,status}
+	  topics. If left empty, uplink_mqtt_init() falls back to the
+	  modem's IMEI (via modem_info) so each device gets a unique ID
+	  without per-device Kconfig fragments.
+
+endmenu
+
+menu "OTA Update"
+
+config FOTA_UPDATE_SERVER_HOSTNAME
+	string "Firmware update server hostname"
+	default ""
+	help
+	  Self-hosted HTTPS host serving signed firmware images (see
+	  ota_update.c). Left empty by default, same pattern as
+	  UPLINK_MQTT_BROKER_HOSTNAME — fill in once hosting is stood up.
+	  ota_update.c requires the "url" field of every trackers/{device_id}/
+	  ota MQTT message to have this same host (when non-empty); a
+	  mismatch is rejected rather than followed, so a compromised
+	  MQTT publisher can't redirect the device to an arbitrary host.
+	  Left as a no-op (any host accepted, logged loudly) while empty,
+	  since there's nothing yet to validate against.
+
+config FOTA_UPDATE_SEC_TAG
+	int "Modem key-mgmt security tag for the FOTA HTTPS download's CA cert"
+	default 1234568
+	help
+	  Deliberately a *different* sec_tag from UPLINK_MQTT_SEC_TAG — see
+	  AUDIT.md's Phase 6 section for why this was chosen over reusing the
+	  MQTT sec_tag (mainly: avoids presenting the MQTT broker's mTLS
+	  client certificate to an unrelated firmware-hosting server, and
+	  allows the firmware host to trust a different/public CA than the
+	  MQTT broker's private one). CA-only (server-authenticated HTTPS,
+	  not mutual TLS) — see ota_update_certs.h.
+
+endmenu
+
 source "Kconfig.zephyr"

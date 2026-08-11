@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/dt-bindings/sensor/icm42688.h>
+
 / {
 	chosen {
 		zephyr,canbus = &mcp2515;
@@ -30,7 +32,11 @@
 
 &arduino_spi {
 	status = "okay";
-	cs-gpios = <&gpio0 10 GPIO_ACTIVE_LOW>; /* CS */
+	/* Index in cs-gpios corresponds to the child node's reg value
+	 * (see dts/bindings/spi/spi-controller.yaml) — index 0 (D10) is
+	 * the existing MCP2515 CS, index 1 (D9) is the new ICM-42688-P CS. */
+	cs-gpios = <&gpio0 10 GPIO_ACTIVE_LOW>, /* CS: MCP2515 */
+		   <&gpio0 9 GPIO_ACTIVE_LOW>;  /* CS: ICM-42688-P */
 
 	mcp2515: mcp2515@0 {
 		compatible = "microchip,mcp2515";
@@ -45,6 +51,25 @@
 		can-transceiver {
 			max-bitrate = <1000000>;
 		};
+	};
+
+	/* Zephyr's mainline icm42688 driver is SPI-only (no I2C backend),
+	 * hence it living on &arduino_spi rather than &arduino_i2c despite
+	 * the shield exposing both. Polled via sensor_sample_fetch() from
+	 * imu_icm42688.c rather than interrupt/trigger mode, so no
+	 * int-gpios — one less pin to wire, and this workload doesn't need
+	 * the latency interrupt mode buys. */
+	icm42688: icm42688@1 {
+		compatible = "invensense,icm42688";
+		spi-max-frequency = <1000000>;
+		status = "okay";
+		reg = <0x1>;
+		accel-pwr-mode = <ICM42688_DT_ACCEL_LN>;
+		accel-odr = <ICM42688_DT_ACCEL_ODR_100>;
+		accel-fs = <ICM42688_DT_ACCEL_FS_8>;
+		gyro-pwr-mode = <ICM42688_DT_GYRO_LN>;
+		gyro-odr = <ICM42688_DT_GYRO_ODR_100>;
+		gyro-fs = <ICM42688_DT_GYRO_FS_2000>;
 	};
 };
 

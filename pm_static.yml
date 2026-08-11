@@ -6,7 +6,9 @@ EMPTY_0:
     - mcuboot_pad
   region: flash_primary
   size: 0x4000
-EMPTY_1:
+# Flash-backed FIFO buffer for telemetry queued while uplink_mqtt is
+# disconnected (buffer_fifo.c). 6x 0x1000 (4KB) NVS sectors.
+telemetry_fifo:
   address: 0xfa000
   end_address: 0x100000
   placement:

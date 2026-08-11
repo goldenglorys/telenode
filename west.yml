@@ -5,17 +5,27 @@ manifest:
   version: 1.0
 
   projects:
-    - name: golioth
-      path: modules/lib/golioth-firmware-sdk
-      revision: v0.21.0
-      url: https://github.com/golioth/golioth-firmware-sdk.git
-      west-commands: scripts/west-commands.yml
-      submodules: true
+    # Direct import of the zephyr/nrf/HAL tree, pinned at the exact revision
+    # and name-allowlist previously resolved transitively through the now-
+    # removed `golioth` (golioth-firmware-sdk) project's
+    # `import: {file: west-ncs.yml}` (that file just pointed here at the same
+    # revision with `import: true`). Verified byte-identical resolution
+    # before/after this change — see AUDIT.md.
+    #
+    # Note: `path` is bare `nrf` (not `deps/nrf`) because `import.path-prefix`
+    # below applies to this project's own resolved path too, not just to the
+    # projects its import pulls in — `deps` + `nrf` = `deps/nrf`. The
+    # now-removed `golioth` project had the same quirk in reverse: its bare
+    # `path: modules/lib/golioth-firmware-sdk` resolved to
+    # `deps/modules/lib/golioth-firmware-sdk` on disk because of its own
+    # `import.path-prefix: deps`.
+    - name: nrf
+      path: nrf
+      revision: v3.1.1
+      url: https://github.com/nrfconnect/sdk-nrf
       import:
-        file: west-ncs.yml
         path-prefix: deps
         name-allowlist:
-          - nrf
           - zephyr
           - cmsis_6
           - hal_nordic
@@ -27,21 +37,10 @@ manifest:
           - oberon-psa-crypto
           - qcbor
           - segger
-          - qcbor
           - tfm-mcuboot
           - tinycrypt
           - trusted-firmware-m
           - zcbor
-
-    - name: golioth-zephyr-boards
-      path: deps/modules/lib/golioth-boards
-      revision: v2.1.1
-      url: https://github.com/golioth/golioth-zephyr-boards
-
-    - name: libostentus
-      path: deps/modules/lib/libostentus
-      revision: v2.0.0
-      url: https://github.com/golioth/libostentus
 
     - name: zephyr-network-info
       path: deps/modules/lib/network-info
