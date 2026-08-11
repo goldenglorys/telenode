@@ -9,16 +9,14 @@ on:
   push:
     branches: [ main ]
 
+# aludel_elixir job removed — that board's overlay/conf was deleted along
+# with Golioth Cloud transport (see AUDIT.md); nRF9160-DK is the only
+# supported target now. This workflow is a build/compile check only, not
+# a real test suite — see docs/TESTING.md for actual verification status.
 jobs:
   test_build_nrf9160dk:
     uses: ./.github/workflows/build_zephyr.yml
     with:
-      ZEPHYR_SDK: 0.16.3
+      ZEPHYR_SDK: 0.17.4
       BOARD: nrf9160dk/nrf9160/ns
-      ARTIFACT: false
-  test_build_aludel_elixir:
-    uses: ./.github/workflows/build_zephyr.yml
-    with:
-      ZEPHYR_SDK: 0.16.3
-      BOARD: aludel_elixir/nrf9160/ns
       ARTIFACT: false

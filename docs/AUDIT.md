@@ -987,3 +987,50 @@ already points at `golioth/reference-design-can-asset-tracker.git`
 this explicitly: it is not this project's repo, don't `git push origin`
 against it. A personal remote needs to be added deliberately once a GitHub
 repo URL exists.
+
+## Docs centralization, CI fixes, and commit-message cleanup
+
+Follow-up pass, same session as the hygiene pass above.
+
+- **Moved `AUDIT.md`, `ISSUES.md`, `TESTING.md` into `docs/`** (`git mv`,
+  history preserved) and added `docs/ARCHITECTURE.md` — a single-source-
+  of-truth overview doc for any agent (or human) picking this project up
+  cold: goal checklist, architecture diagram, module map, hard
+  constraints, and a documentation map pointing to the other three docs.
+  It's explicitly instructed (in its own text) to be kept current by
+  whoever finishes the next unit of work — see its "Keeping this document
+  current" section rather than duplicating that instruction here.
+- **`README.md`** gained a "Documentation" section pointing at all four
+  `docs/` files, a full Setup/Building/Testing walkthrough (previously
+  just a terse two-command build block), and a CI build-status badge.
+  All bare `AUDIT.md`/`ISSUES.md`/`TESTING.md` references elsewhere in
+  `README.md` updated to `docs/...` paths to match the move.
+- **CI workflows were stale and would have failed regardless of this
+  pass** — found while checking whether a real test suite exists (it
+  doesn't; `.github/workflows/test.yml` is a build/compile check only,
+  no `tests/` directory, no twister unit tests, `sample.yaml` is just
+  NCS's own sample-registration metadata). Two independent problems
+  fixed:
+  1. `test.yml` and `release.yml` both still had a job/matrix entry for
+     `aludel_elixir/nrf9160/ns` — that board's `.conf`/`.overlay` were
+     deleted in Phase 2 (Aludel Elixir support removed), so that job
+     would fail on every run. Removed.
+  2. `build_zephyr.yml`'s container reference
+     (`golioth/golioth-zephyr-base:${ZEPHYR_SDK}-SDK-v0`) uses a tag
+     format that no longer exists — checked the live Docker Hub tag
+     list rather than assuming, and the image is now tagged
+     `sdk-<version>` (only `sdk-0.17.4` and `sdk-1.0.1` currently
+     published). Updated the container reference to the new tag format
+     and bumped the default `ZEPHYR_SDK` input to `0.17.4` (all three
+     workflow files). Note this doesn't exactly match this workspace's
+     own resolved SDK version (`deps/zephyr/SDK_VERSION` = `0.17.1`) —
+     `0.17.4` is the closest published container tag, not a byte-exact
+     match. Flagging this rather than treating it as fully resolved: if
+     CI behaves differently from a local build, this version skew is the
+     first thing to check.
+- **Commit history cleanup**: the two prior local commits
+  ("Replace Golioth Cloud transport..." and "Workspace hygiene...") were
+  rewritten (`git reset --soft` + recommit, safe since neither had been
+  pushed anywhere) to drop the `Co-Authored-By` trailer, per your
+  explicit request. This and all subsequent commits in this project
+  omit that trailer.

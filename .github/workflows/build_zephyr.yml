@@ -9,7 +9,7 @@ on:
       ZEPHYR_SDK:
         required: true
         type: string
-        default: 0.16.3
+        default: 0.17.4
       BOARD:
         required: true
         type: string
@@ -39,7 +39,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    container: golioth/golioth-zephyr-base:${{ inputs.ZEPHYR_SDK }}-SDK-v0
+    # Tag format changed upstream (was `<ver>-SDK-v0`, now `sdk-<ver>`) —
+    # verified against the live Docker Hub tag list before updating this.
+    # Only `sdk-0.17.4` and `sdk-1.0.1` exist there as of this fork; this
+    # workspace's own SDK (`deps/zephyr/SDK_VERSION`) is 0.17.1, so this is
+    # the closest available tag, not an exact match — flagged in AUDIT.md.
+    container: golioth/golioth-zephyr-base:sdk-${{ inputs.ZEPHYR_SDK }}
 
     env:
       ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-${{ inputs.ZEPHYR_SDK }}
