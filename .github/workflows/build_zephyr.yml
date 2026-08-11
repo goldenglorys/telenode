@@ -1,15 +1,22 @@
-# Copyright (c) 2023 Golioth, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
 name: Build Zephyr binaries
 
+# Runs on a plain ubuntu-latest runner and installs Python/west/the Zephyr
+# SDK explicitly, rather than depending on a prebuilt container image.
+# This previously used `golioth/golioth-zephyr-base`, which broke twice in
+# a row (a Docker Hub tag-format change, then a missing `pip3` in the
+# image) — Golioth has stated that image is private/internal and not
+# intended for external reuse, and changes without notice. Since this
+# fork isn't Golioth's project to depend on their infra for, this workflow
+# now only depends on public, documented tooling: apt packages and West's
+# own `sdk install` command, the same steps documented in README.md's
+# Setup section. Slower per run without a baked-in toolchain image, offset
+# with caching below.
+
 on:
   workflow_dispatch:
     inputs:
-      ZEPHYR_SDK:
-        required: true
-        type: string
-        default: 0.17.4
       BOARD:
         required: true
         type: string
@@ -23,9 +30,6 @@ on:
 
   workflow_call:
     inputs:
-      ZEPHYR_SDK:
-        required: true
-        type: string
       BOARD:
         required: true
         type: string
@@ -38,16 +42,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    # Tag format changed upstream (was `<ver>-SDK-v0`, now `sdk-<ver>`) —
-    # verified against the live Docker Hub tag list before updating this.
-    # Only `sdk-0.17.4` and `sdk-1.0.1` exist there as of this fork; this
-    # workspace's own SDK (`deps/zephyr/SDK_VERSION`) is 0.17.1, so this is
-    # the closest available tag, not an exact match — flagged in AUDIT.md.
-    container: golioth/golioth-zephyr-base:sdk-${{ inputs.ZEPHYR_SDK }}
-
-    env:
-      ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-${{ inputs.ZEPHYR_SDK }}
 
     steps:
       - name: Checkout
@@ -63,14 +57,47 @@ jobs:
           BOARD_NICENAME=${BOARD_NICENAME//\//_}
           echo "BOARD_NICENAME=${BOARD_NICENAME}" >> $GITHUB_OUTPUT
 
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git cmake ninja-build gperf ccache dfu-util device-tree-compiler \
+            wget python3-dev python3-pip python3-venv python3-setuptools \
+            python3-tk python3-wheel xz-utils file make gcc
+
+      # Keyed on west.yml's own contents: a manifest change (new NCS/Zephyr
+      # revision) invalidates both caches and triggers a fresh, correct
+      # fetch/install; otherwise both are reused across runs. The Zephyr
+      # SDK's exact required version is auto-detected by `west sdk install`
+      # from deps/zephyr/SDK_VERSION at install time regardless of this
+      # cache, so a cache miss costs time, never correctness.
+      - name: Cache Zephyr SDK
+        uses: actions/cache@v4
+        with:
+          path: ~/zephyr-sdk-*
+          key: zephyr-sdk-${{ hashFiles('app/west.yml') }}
+
+      - name: Cache west-managed dependencies
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: west-deps-${{ hashFiles('app/west.yml') }}
+
       - name: Setup West workspace
         run: |
+          python3 -m venv .venv
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+          source .venv/bin/activate
+          pip install wheel west ecdsa
           west init -l app
           west update --narrow -o=--depth=1
           west zephyr-export
-          pip3 install -r deps/zephyr/scripts/requirements-base.txt
+          pip install -r deps/zephyr/scripts/requirements-base.txt
           # Needed for TF-M
-          pip3 install cryptography pyasn1 pyyaml cbor>=1.0.0 imgtool>=1.9.0 jinja2 click
+          pip install cryptography pyasn1 pyyaml cbor>=1.0.0 imgtool>=1.9.0 jinja2 click
+          # nRF9160 is Cortex-M33 (arm-zephyr-eabi) only; skip other archs.
+          # Non-interactive by default (no -i/--interactive passed).
+          west sdk install -t arm-zephyr-eabi
 
       - name: Build with West
         run: |

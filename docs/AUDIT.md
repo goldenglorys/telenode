@@ -1034,3 +1034,56 @@ Follow-up pass, same session as the hygiene pass above.
   pushed anywhere) to drop the `Co-Authored-By` trailer, per your
   explicit request. This and all subsequent commits in this project
   omit that trailer.
+
+## CI rework — dropped the golioth-zephyr-base container entirely
+
+First real push to GitHub surfaced a second, worse CI break: even after
+the tag-format fix above, the job failed at `pip3: not found` inside the
+container. Before patching around it again, checked whether
+`golioth-zephyr-base`'s Dockerfile/source was public to understand what
+changed — it isn't; Golioth has stated this image is private/internal,
+"not generally reusable," and "changes often" (found via web search, the
+image's own repo isn't public). Two independent breaks in two pushes,
+against an image we can't inspect, version-pin with confidence, or expect
+support for on a fork Golioth doesn't maintain — presented this as a
+choice (patch around the immediate error again vs. stop depending on it),
+you picked dropping it.
+
+**`build_zephyr.yml` now runs on plain `ubuntu-latest`**, no `container:`
+directive, and installs everything explicitly:
+- Host packages via `apt-get` (git, cmake, ninja-build, device-tree-
+  compiler, wget, python3-venv, etc. — the standard Zephyr host
+  dependency list).
+- A Python venv + `pip install west`, then the same `west
+  init`/`update`/`zephyr-export` sequence already used everywhere else in
+  this project, with the venv's `bin/` added to `$GITHUB_PATH` so it
+  stays active across subsequent steps (each `run:` block is a fresh
+  shell in GitHub Actions — activation alone doesn't persist).
+- `west sdk install -t arm-zephyr-eabi` — confirmed from
+  `deps/zephyr/scripts/west_commands/sdk.py`'s own argument parser that
+  this is non-interactive by default (interactive mode requires an
+  explicit `-i`/`--interactive` flag we don't pass) and auto-detects the
+  required SDK version from `deps/zephyr/SDK_VERSION` at install time.
+  This is strictly better than the container approach, not just safer:
+  it resolves the *exact* SDK version this manifest needs, which removes
+  the `0.17.4`-container-vs-`0.17.1`-local version-skew flag noted above
+  — that concern no longer applies, since there's no separate container
+  SDK version to drift from this workspace's own.
+- `actions/cache` for `~/zephyr-sdk-*` and `deps/`, both keyed on
+  `hashFiles('app/west.yml')` — a manifest change (new NCS/Zephyr
+  revision) invalidates and refetches correctly; otherwise both are
+  reused across runs. A cache miss only costs time, never correctness,
+  since `west sdk install`/`west update` always resolve against the
+  actual current manifest regardless of what's cached.
+- The now-unused `ZEPHYR_SDK` input was removed from `build_zephyr.yml`,
+  `test.yml`, and `release.yml` entirely (no version to pass in anymore).
+
+Trade-off, stated plainly: this is slower per CI run than a working
+prebuilt-toolchain container would be (full host-dependency + SDK
+install unless the cache hits), in exchange for depending on nothing
+that isn't public, documented, and within this project's control. Not
+verified by an actual successful CI run yet at the time of this
+edit — the YAML was validated for syntax locally
+(`python3 -c "import yaml; yaml.safe_load(...)"`  against all three
+files) but GitHub Actions behavior itself can only be confirmed by
+actually pushing and watching it run.

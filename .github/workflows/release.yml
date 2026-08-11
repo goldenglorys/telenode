@@ -16,12 +16,10 @@ jobs:
     build-binaries:
         strategy:
             matrix:
-              ZEPHYR_SDK: [0.17.4]
               BOARD: ["nrf9160dk/nrf9160/ns"]
 
         uses: ./.github/workflows/build_zephyr.yml
         with:
-          ZEPHYR_SDK: ${{ matrix.ZEPHYR_SDK }}
           BOARD: ${{ matrix.BOARD }}
           ARTIFACT: true
           TAG: ${{ inputs.version }}
